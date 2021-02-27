@@ -9,6 +9,8 @@ from sqlalchemy import create_engine, func
 
 import datetime as dt
 
+import numpy as np
+
 #################################################
 # Database Setup
 #################################################
@@ -50,7 +52,7 @@ def home():
         f"/api/v1.0/<start>/<end>"
     )
 
-# Route for json dictionary of data
+# Route for json dictionary of precipitation data for past year
 @app.route("/api/v1.0/precipitation")
 def precipitation():
 
@@ -67,23 +69,54 @@ def precipitation():
     session.close()
 
     # Create dictionary
-
     precipitation_dict = {}
-
-    # precipitation_dict = [u.__dict__ for u in session.query(Measurement.date, Measurement.prcp).\
-    #    filter(func.strftime(Measurement.date >= year_date)).all()]
-
-    for date, prcp in date_results:
-        precipitation_dict["date"] = date
-        precipitation_dict["prcp"] = prcp
-
-
+    precipitation_dict = dict(date_results)
 
     # JSON dctionary of results
     return jsonify(precipitation_dict)
 
+# Route for json list of stations
+@app.route("/api/v1.0/stations")
+def stations():
 
+    # Start session with database
+    session = Session(engine)
 
+    # Query stations
+    station_list = session.query(Station.station).\
+        group_by(Station.station).all()
+
+    # Close session
+    session.close()
+
+    # Convert list of tuples into a list
+    station_list = list(np.ravel(station_list))
+
+    # JSON list of results
+    return jsonify(station_list)
+
+# Route for dates and temperature for most active station for past year
+@app.route("/api/v1.0/tobs")
+def tobs():
+
+    # Start session with database
+    session = Session(engine)
+
+    # Query stations
+    year_date = dt.date(2017, 8, 23) - dt.timedelta(days=365)
+
+    temp_results = session.query(Measurement.tobs).\
+        filter(func.strftime(Measurement.date >= year_date)).\
+        filter(Measurement.station == 'USC00519281').all()
+
+    # Close session
+    session.close()
+    
+    # Convert list of tuples into a list
+    temp_list = list(np.ravel(temp_results))
+
+    # JSON list of results
+    return jsonify(temp_list)
 
         
 
